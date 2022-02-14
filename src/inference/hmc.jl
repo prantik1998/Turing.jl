@@ -357,6 +357,7 @@ Arguments:
 struct NUTS{AD,space,metricT<:AHMC.AbstractMetric} <: AdaptiveHamiltonian{AD}
     n_adapts::Int         # number of samples with adaption for ϵ
     δ::Float64        # target accept rate
+    β::Float64        # temperature
     max_depth::Int         # maximum tree depth
     Δ_max::Float64
     ϵ::Float64     # (initial) step size
@@ -367,48 +368,52 @@ NUTS(args...; kwargs...) = NUTS{ADBackend()}(args...; kwargs...)
 function NUTS{AD}(
     n_adapts::Int,
     δ::Float64,
+    β::Float64,
     max_depth::Int,
     Δ_max::Float64,
     ϵ::Float64,
     ::Type{metricT},
     space::Tuple
 ) where {AD, metricT}
-    return NUTS{AD, space, metricT}(n_adapts, δ, max_depth, Δ_max, ϵ)
+    return NUTS{AD, space, metricT}(n_adapts, δ, β, max_depth, Δ_max, ϵ)
 end
 
 function NUTS{AD}(
     n_adapts::Int,
     δ::Float64,
+    β::Float64,
     ::Tuple{};
     kwargs...
 ) where AD
-    NUTS{AD}(n_adapts, δ; kwargs...)
+    NUTS{AD}(n_adapts, δ, β; kwargs...)
 end
 
 function NUTS{AD}(
     n_adapts::Int,
     δ::Float64,
+    β::Float64=1.0,
     space::Symbol...;
     max_depth::Int=10,
     Δ_max::Float64=1000.0,
     init_ϵ::Float64=0.0,
     metricT=AHMC.DiagEuclideanMetric
 ) where AD
-    NUTS{AD}(n_adapts, δ, max_depth, Δ_max, init_ϵ, metricT, space)
+    NUTS{AD}(n_adapts, δ, β, max_depth, Δ_max, init_ϵ, metricT, space)
 end
 
 function NUTS{AD}(
     δ::Float64;
+    β::Float64=1.0,
     max_depth::Int=10,
     Δ_max::Float64=1000.0,
     init_ϵ::Float64=0.0,
     metricT=AHMC.DiagEuclideanMetric
 ) where AD
-    NUTS{AD}(-1, δ, max_depth, Δ_max, init_ϵ, metricT, ())
+    NUTS{AD}(-1, δ, β, max_depth, Δ_max, init_ϵ, metricT, ())
 end
 
 function NUTS{AD}(kwargs...) where AD
-    NUTS{AD}(-1, 0.65; kwargs...)
+    NUTS{AD}(-1, 0.65, 1; kwargs...)
 end
 
 for alg in (:HMC, :HMCDA, :NUTS)
@@ -430,7 +435,10 @@ gradient at `θ` for the model specified by `(vi, spl, model)`.
 """
 function gen_∂logπ∂θ(vi, spl::Sampler, model)
     function ∂logπ∂θ(x)
-        return gradient_logp(x, vi, model, spl)
+        l, ∂l∂θ = gradient_logp(x, vi, model, spl)
+        l = l / spl.algorithm.β
+        ∂l∂θ = ∂l∂θ / spl.algorithm.β
+        return l, ∂l∂θ
     end
     return ∂logπ∂θ
 end
@@ -444,10 +452,10 @@ Generate a function that takes `θ` and returns logpdf at `θ` for the model spe
 function gen_logπ(vi_base, spl::AbstractSampler, model)
     function logπ(x)::Float64
         vi = vi_base
-        x_old, lj_old = vi[spl], getlogp(vi)
+        x_old, lj_old = vi[spl], getlogp(vi) / spl.algorithm.β
         vi = setindex!!(vi, x, spl)
         vi = last(DynamicPPL.evaluate!!(model, vi, spl))
-        lj = getlogp(vi)
+        lj = getlogp(vi) / spl.algorithm.β
         # Don't really need to capture these will only be
         # necessary if `vi` is indeed mutable.
         setindex!!(vi, x_old, spl)
