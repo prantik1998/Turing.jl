@@ -436,8 +436,8 @@ gradient at `θ` for the model specified by `(vi, spl, model)`.
 function gen_∂logπ∂θ(vi, spl::Sampler, model)
     function ∂logπ∂θ(x)
         l, ∂l∂θ = gradient_logp(x, vi, model, spl)
-        l = l / spl.algorithm.β
-        ∂l∂θ = ∂l∂θ / spl.algorithm.β
+        l = l / spl.alg.β
+        ∂l∂θ = ∂l∂θ / spl.alg.β
         return l, ∂l∂θ
     end
     return ∂logπ∂θ
@@ -452,10 +452,10 @@ Generate a function that takes `θ` and returns logpdf at `θ` for the model spe
 function gen_logπ(vi_base, spl::AbstractSampler, model)
     function logπ(x)::Float64
         vi = vi_base
-        x_old, lj_old = vi[spl], getlogp(vi) / spl.algorithm.β
+        x_old, lj_old = vi[spl], getlogp(vi) / spl.alg.β
         vi = setindex!!(vi, x, spl)
         vi = last(DynamicPPL.evaluate!!(model, vi, spl))
-        lj = getlogp(vi) / spl.algorithm.β
+        lj = getlogp(vi) / spl.alg.β
         # Don't really need to capture these will only be
         # necessary if `vi` is indeed mutable.
         setindex!!(vi, x_old, spl)
