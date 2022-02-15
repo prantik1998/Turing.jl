@@ -413,7 +413,7 @@ function NUTS{AD}(
 end
 
 function NUTS{AD}(kwargs...) where AD
-    NUTS{AD}(-1, 0.65, 1; kwargs...)
+    NUTS{AD}(-1, 0.65, 1.0; kwargs...)
 end
 
 for alg in (:HMC, :HMCDA, :NUTS)

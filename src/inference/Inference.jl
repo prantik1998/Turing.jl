@@ -132,7 +132,21 @@ function AbstractMCMC.sample(
     N::Integer;
     kwargs...
 )
+    println("Inside inference $(typeof([alg])), $(typeof([alg]) <: Vector{<:InferenceAlgorithm})")
     return AbstractMCMC.sample(Random.GLOBAL_RNG, model, alg, N; kwargs...)
+end
+
+function AbstractMCMC.sample(
+    model::AbstractModel,
+    algs::Vector{<:InferenceAlgorithm},
+    swap_every::Integer,
+    N::Integer;
+    kwargs...
+)
+    """
+    Replica exchange
+    """
+    return AbstractMCMC.sample(Random.GLOBAL_RNG, model, algs, swap_every, N; kwargs...)
 end
 
 function AbstractMCMC.sample(
@@ -143,6 +157,21 @@ function AbstractMCMC.sample(
     kwargs...
 )
     return AbstractMCMC.sample(rng, model, Sampler(alg, model), N; kwargs...)
+end
+
+function AbstractMCMC.sample(
+    rng::AbstractRNG,
+    model::AbstractModel,
+    algs::Vector{<:InferenceAlgorithm},
+    swap_every::Integer,
+    N::Integer;
+    kwargs...
+)
+    """
+    Replica exchange
+    """
+    samplers = [Sampler(alg, model) for alg in algs]
+    return AbstractMCMC.sample(rng, model, samplers, swap_every, N; kwargs...)
 end
 
 function AbstractMCMC.sample(
@@ -161,6 +190,29 @@ function AbstractMCMC.sample(
     else
         return resume(resume_from, N; chain_type=chain_type, progress=progress, kwargs...)
     end
+end
+
+function AbstractMCMC.sample(
+    rng::AbstractRNG,
+    model::AbstractModel,
+    samplers::Vector{<:Sampler{<:InferenceAlgorithm}},
+    swap_every::Integer,
+    N::Integer;
+    chain_type=MCMCChains.Chains,
+    resume_from=nothing,
+    progress=PROGRESS[],
+    kwargs...
+)
+    """
+    Replica exchange
+    """
+    println("Replica Exchange AbstractMCMC.sample")
+    # if resume_from === nothing
+    return AbstractMCMC.mcmcsample(rng, model, samplers, swap_every, N;
+                                    chain_type=chain_type, progress=progress, kwargs...)
+    # else
+    #     return resume(resume_from, N; chain_type=chain_type, progress=progress, kwargs...)
+    # end
 end
 
 function AbstractMCMC.sample(
