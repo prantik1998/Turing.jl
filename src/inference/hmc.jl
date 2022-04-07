@@ -409,7 +409,7 @@ function NUTS{AD}(
     init_ϵ::Float64=0.0,
     metricT=AHMC.DiagEuclideanMetric
 ) where AD
-    NUTS{AD}(-1, δ, β, max_depth, Δ_max, init_ϵ, metricT, ())
+    NUTS{AD}(1000, δ, β, max_depth, Δ_max, init_ϵ, metricT, ())
 end
 
 function NUTS{AD}(kwargs...) where AD
